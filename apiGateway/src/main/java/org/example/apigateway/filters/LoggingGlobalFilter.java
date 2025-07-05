@@ -1,33 +1,47 @@
-package com.example.apigateway.filters;
+package org.example.apigateway.filters;
 
-import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.example.apigateway.dto.LogEntryDto;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
 import java.time.LocalDateTime;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 
 @Component
 public class LoggingGlobalFilter implements GlobalFilter, Ordered {
+
+    private final WebClient webClient = WebClient.create("http://localhost:8085"); // log-service base URL
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
 
         ServerHttpRequest request = exchange.getRequest();
-
         String path = request.getPath().toString();
         String method = request.getMethod().name();
 
-        System.out.println("REQUEST: [" + method + "] " + path + " at " + LocalDateTime.now());
+        return chain.filter(exchange).then(
+                Mono.fromRunnable(() -> {
+                    int statusCode = exchange.getResponse().getStatusCode().value();
 
-        return chain.filter(exchange).then(Mono.fromRunnable(() -> {
-            int statusCode = exchange.getResponse().getStatusCode().value();
-            System.out.println("RESPONSE: " + statusCode + " for " + path);
-            // من هنا يمكنك إرسال البيانات إلى log-service عبر REST أو Kafka
-        }));
+                    LogEntryDto log = new LogEntryDto();
+                    log.setMethod(method);
+                    log.setPath(path);
+                    log.setStatusCode(statusCode);
+                    log.setTimestamp(LocalDateTime.now());
+
+                    webClient.post()
+                            .uri("/logs")
+                            .bodyValue(log)
+                            .retrieve()
+                            .bodyToMono(Void.class)
+                            .subscribe();
+                })
+        );
     }
 
     @Override

@@ -27,7 +27,7 @@ spring:
             - StripPrefix=1
 
         - id: course-service
-          uri: http://localhost:8005
+          uri: lb://course-service
           predicates:
             - Path=/course-service/**
           filters:

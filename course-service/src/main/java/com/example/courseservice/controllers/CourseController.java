@@ -14,6 +14,11 @@ public class CourseController {
     @Autowired
     private CourseService courseService;
 
+    @GetMapping("/ping")
+    public String ping() {
+        return "Course service response from port: " + System.getProperty("server.port");
+    }
+
     @GetMapping
     public List<Course> getAllCourses() {
         return courseService.getAllCourses();
