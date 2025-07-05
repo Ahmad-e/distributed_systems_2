@@ -1,0 +1,3 @@
+rootProject.name = 'servicediscovery'
+
+include 'servicediscovery', 'gateway', 'employee_service', 'department_service'
